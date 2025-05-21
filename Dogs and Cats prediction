@@ -1,0 +1,218 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "mount_file_id": "1WkKA5q4JC9puDljvAVRyYLv85FxdmPal",
+      "authorship_tag": "ABX9TyOIZZwkjKaGhsJY1vOKnSYz",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Hrishx/CNN/blob/main/Dogs%20and%20Cats%20prediction\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 7,
+      "metadata": {
+        "id": "bLxqMMUi27Uh"
+      },
+      "outputs": [],
+      "source": [
+        "%matplotlib inline\n",
+        "\n",
+        "import numpy as np\n",
+        "import pandas as pd\n",
+        "from tensorflow.keras.preprocessing.image import ImageDataGenerator\n",
+        "from tensorflow.keras.models import Model\n",
+        "from tensorflow.keras.layers import Input, Flatten, Dense\n",
+        "from tensorflow.keras.callbacks import Callback, ModelCheckpoint\n",
+        "from tensorflow.keras.applications.vgg16 import VGG16\n",
+        "from tensorflow.keras.preprocessing import image\n",
+        "from tensorflow.keras.applications.vgg16 import preprocess_input\n",
+        "\n",
+        "import warnings\n",
+        "warnings.filterwarnings('ignore')"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "model_vgg16_conv = VGG16(weights='imagenet', include_top=False)"
+      ],
+      "metadata": {
+        "id": "cABk0ilI0oIB"
+      },
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "for layer in model_vgg16_conv.layers:\n",
+        "    layer.trainable = False\n"
+      ],
+      "metadata": {
+        "id": "j480apUq0xZ9"
+      },
+      "execution_count": 9,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "img_width, img_height = 150, 150\n",
+        "train_data_dir = '/content/drive/MyDrive/data/train'\n",
+        "val_data_dir = '/content/drive/MyDrive/data/validation'\n",
+        "model_weights_file = 'vgg16-xfer-weights.h5'\n",
+        "nb_train_samples = 4\n",
+        "nb_val_samples = 4\n",
+        "nb_epochs = 5"
+      ],
+      "metadata": {
+        "id": "-Q2vYYf90x8q"
+      },
+      "execution_count": 10,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "# Compile the model\n",
+        "# model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])\n",
+        "input = Input(shape=(img_width, img_height, 3))\n",
+        "output_vgg16_conv = model_vgg16_conv(input)\n",
+        "x = Flatten()(output_vgg16_conv)\n",
+        "x = Dense(64, activation='relu')(x)\n",
+        "x = Dense(2, activation='softmax')(x)\n",
+        "model = Model(inputs=input, outputs=x)\n",
+        "model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])"
+      ],
+      "metadata": {
+        "id": "8zMnNTzM01uV"
+      },
+      "execution_count": 11,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train_datagen = ImageDataGenerator(rescale=1./255, shear_range=0.2, zoom_range=0.2, horizontal_flip=True)\n",
+        "test_datagen = ImageDataGenerator(rescale=1./255)\n",
+        "\n",
+        "train_generator = train_datagen.flow_from_directory(train_data_dir, target_size=(img_width, img_height),\n",
+        "                                                    batch_size=4, class_mode='categorical')\n",
+        "validation_generator = test_datagen.flow_from_directory(val_data_dir, target_size=(img_width, img_height),\n",
+        "                                                        batch_size=4,class_mode='categorical')"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "HcUSt40x040Z",
+        "outputId": "7d63ede7-99d6-4989-c62f-37c0e90dfd6e"
+      },
+      "execution_count": 12,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Found 4 images belonging to 2 classes.\n",
+            "Found 4 images belonging to 2 classes.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "callbacks = [ModelCheckpoint(model_weights_file, monitor='val_acc', save_best_only=True)]\n",
+        "\n",
+        "history = model.fit( train_generator, callbacks = callbacks, steps_per_epoch=nb_train_samples,\n",
+        "                              epochs=nb_epochs, validation_data=validation_generator, validation_steps=nb_val_samples)\n",
+        "\n",
+        "print('Training Completed!')"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "_LJZsuCJ08-r",
+        "outputId": "fa378d9b-5e60-4f8c-8ae2-ce8ba4b75f00"
+      },
+      "execution_count": 13,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Epoch 1/5\n",
+            "\u001b[1m4/4\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m5s\u001b[0m 873ms/step - accuracy: 0.5000 - loss: 0.7653 - val_accuracy: 0.5000 - val_loss: 4.8651\n",
+            "Epoch 2/5\n",
+            "\u001b[1m4/4\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m2s\u001b[0m 286ms/step - accuracy: 0.5000 - loss: 2.8385 - val_accuracy: 0.5000 - val_loss: 3.4329\n",
+            "Epoch 3/5\n",
+            "\u001b[1m4/4\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m4s\u001b[0m 859ms/step - accuracy: 0.5000 - loss: 0.4241 - val_accuracy: 0.7500 - val_loss: 0.6399\n",
+            "Epoch 4/5\n",
+            "\u001b[1m4/4\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m2s\u001b[0m 291ms/step - accuracy: 1.0000 - loss: 0.0019 - val_accuracy: 0.7500 - val_loss: 0.6119\n",
+            "Epoch 5/5\n",
+            "\u001b[1m4/4\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m2s\u001b[0m 274ms/step - accuracy: 1.0000 - loss: 0.0114 - val_accuracy: 0.7500 - val_loss: 0.5060\n",
+            "Training Completed!\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "img_path = '/content/drive/MyDrive/data/cat.jpg'\n",
+        "label = ['Cat','Dog']\n",
+        "img = image.load_img(img_path, target_size=(150, 150))\n",
+        "x = image.img_to_array(img)\n",
+        "x = np.expand_dims(x, axis=0)\n",
+        "x = preprocess_input(x)\n",
+        "\n",
+        "features = model.predict(x)\n",
+        "ind = np.where(features == 1)[1][0]\n",
+        "print('Predicted Array:',features)\n",
+        "print('Predicted Label:',label[ind])"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "AI_kAcgK1BFM",
+        "outputId": "14a2be1f-9047-432c-8b69-64a3f4cf97d4"
+      },
+      "execution_count": 14,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\u001b[1m1/1\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 397ms/step\n",
+            "Predicted Array: [[1. 0.]]\n",
+            "Predicted Label: Cat\n"
+          ]
+        }
+      ]
+    }
+  ]
+}
